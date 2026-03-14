@@ -100,14 +100,14 @@ pub async fn show_all_events(client: &Client) -> Result<(), Error> {
     match resp {
         Ok(result) => {
             for region in result.regions.unwrap_or_default() {
-                let reg: &'static str = Box::leak(Box::from(region.region_name().unwrap()));
-                let region_provider = RegionProviderChain::default_provider().or_else(reg);
+                let reg_name = region.region_name().unwrap_or_default().to_string();
+                let region_provider = RegionProviderChain::default_provider().or_else(aws_sdk_ec2::config::Region::new(reg_name.clone()));
                 let config = aws_config::from_env().region(region_provider).load().await;
                 let new_client = Client::new(&config);
 
                 let resp = new_client.describe_instance_status().send().await;
 
-                println!("Instances in region {}:", reg);
+                println!("Instances in region {}:", reg_name);
                 println!();
 
                 for status in resp.unwrap().instance_statuses() {

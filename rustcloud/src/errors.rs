@@ -1,24 +1,37 @@
 use std::fmt;
 
+/// Unified error type for all cloud provider operations.
+///
+/// `CloudError` provides a consistent error interface across AWS, GCP, Azure,
+/// and other providers, allowing callers to handle errors uniformly regardless
+/// of the underlying cloud platform.
 #[derive(Debug)]
 pub enum CloudError {
+    /// Authentication or authorization failure (e.g. expired credentials).
     Auth {
         message: String,
     },
+    /// The request was throttled by the provider.
     RateLimit {
+        /// Suggested wait time in seconds before retrying, if provided.
         retry_after: Option<u64>,
     },
+    /// A provider-specific error with HTTP status information.
     Provider {
         http_status: u16,
         message: String,
+        /// Whether this error is safe to retry (e.g. 503 Service Unavailable).
         retryable: bool,
     },
+    /// A network-level error (DNS failure, timeout, connection refused, etc.).
     Network {
         source: reqwest::Error,
     },
+    /// Failed to serialize or deserialize a request/response payload.
     Serialization {
         source: serde_json::Error,
     },
+    /// The requested feature is not supported by this provider.
     Unsupported {
         feature: &'static str,
     },

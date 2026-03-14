@@ -19,7 +19,7 @@ impl GoogleStorage {
     pub async fn create_disk(
         &self,
         request: HashMap<String, Value>,
-    ) -> Result<HashMap<String, Value>, reqwest::Error> {
+    ) -> Result<HashMap<String, Value>, Box<dyn std::error::Error>> {
         let mut option = HashMap::new();
         let mut project_id = String::new();
         let mut zone = String::new();
@@ -105,12 +105,14 @@ impl GoogleStorage {
         option.insert("Zone", &zone_value);
         option.insert("Type", &type_value);
 
-        let create_disk_json = serde_json::to_string(&option).unwrap();
+        let create_disk_json = serde_json::to_string(&option)
+            .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
         let url = format!(
             "{}/projects/{}/zones/{}/disks",
             self.base_url, project_id, zone
         );
-        let token = retrieve_token().await.unwrap();
+        let token = retrieve_token().await
+            .map_err(|e| Box::new(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
 
         let resp = self
             .client
@@ -121,11 +123,12 @@ impl GoogleStorage {
             .send()
             .await?;
 
+        let status = resp.status().as_u16();
         let body = resp.text().await.unwrap_or_default();
         let mut response: HashMap<String, Value> = HashMap::new();
         response.insert(
             "status".to_string(),
-            Value::Number(resp.status().as_u16().into()),
+            Value::Number(status.into()),
         );
         response.insert("body".to_string(), Value::String(body));
 
@@ -135,12 +138,13 @@ impl GoogleStorage {
     pub async fn delete_disk(
         &self,
         request: HashMap<String, String>,
-    ) -> Result<HashMap<String, Value>, reqwest::Error> {
+    ) -> Result<HashMap<String, Value>, Box<dyn std::error::Error>> {
         let url = format!(
             "{}/projects/{}/zones/{}/disks/{}",
             self.base_url, request["projectid"], request["Zone"], request["disk"]
         );
-        let token = retrieve_token().await.unwrap();
+        let token = retrieve_token().await
+            .map_err(|e| Box::new(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
         let resp = self
             .client
             .delete(&url)
@@ -149,12 +153,13 @@ impl GoogleStorage {
             .send()
             .await?;
 
+        let status = resp.status().as_u16();
         let body = resp.text().await.unwrap_or_default();
 
         let mut response = HashMap::new();
         response.insert(
             "status".to_string(),
-            Value::Number(resp.status().as_u16().into()),
+            Value::Number(status.into()),
         );
         response.insert("body".to_string(), Value::String(body));
 
@@ -164,7 +169,7 @@ impl GoogleStorage {
     pub async fn create_snapshot(
         &self,
         request: HashMap<String, Value>,
-    ) -> Result<HashMap<String, Value>, reqwest::Error> {
+    ) -> Result<HashMap<String, Value>, Box<dyn std::error::Error>> {
         let mut snapshot = HashMap::new();
         let mut project_id = String::new();
         let mut zone = String::new();
@@ -227,12 +232,14 @@ impl GoogleStorage {
             }
         }
 
-        let create_snapshot_json = serde_json::to_string(&snapshot).unwrap();
+        let create_snapshot_json = serde_json::to_string(&snapshot)
+            .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
         let url = format!(
             "{}/projects/{}/zones/{}/disks/{}/createSnapshot",
             self.base_url, project_id, zone, disk
         );
-        let token = retrieve_token().await.unwrap();
+        let token = retrieve_token().await
+            .map_err(|e| Box::new(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
 
         let resp = self
             .client
@@ -243,12 +250,13 @@ impl GoogleStorage {
             .send()
             .await?;
 
+        let status = resp.status().as_u16();
         let body = resp.text().await.unwrap_or_default();
 
         let mut response = HashMap::new();
         response.insert(
             "status".to_string(),
-            Value::Number(resp.status().as_u16().into()),
+            Value::Number(status.into()),
         );
         response.insert("body".to_string(), Value::String(body));
 

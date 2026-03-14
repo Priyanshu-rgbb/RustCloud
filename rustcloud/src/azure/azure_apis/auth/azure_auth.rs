@@ -8,9 +8,10 @@ pub struct AzureAuth;
 
 
 impl AzureAuth {
-    pub fn generate_headers(method: &str, account: &str, resource: &str) -> (String, String) {
+    pub fn generate_headers(method: &str, account: &str, resource: &str) -> Result<(String, String), Box<dyn std::error::Error>> {
 
-        let key = env::var("AZURE_STORAGE_KEY").expect("AZURE_STORAGE_KEY not set");
+        let key = env::var("AZURE_STORAGE_KEY")
+            .map_err(|_| "AZURE_STORAGE_KEY environment variable not set")?;
         
         let date = Utc::now().format("%a, %d %b %Y %H:%M:%S GMT").to_string();
         
@@ -29,7 +30,7 @@ impl AzureAuth {
         let canonicalized_resource = if query.is_empty() {
             format!("/{}{}", account, path)
         } else {
-            let mut parts: Vec<&str> = query.split('=').collect();
+            let parts: Vec<&str> = query.split('=').collect();
             format!(
                 "/{}{}\n{}:{}",
                 account,
@@ -45,10 +46,12 @@ impl AzureAuth {
       
         );
 
-        let decoded_key = general_purpose::STANDARD.decode(key).unwrap();
+        let decoded_key = general_purpose::STANDARD.decode(&key)
+            .map_err(|e| format!("failed to decode AZURE_STORAGE_KEY: {}", e))?;
         
 
-        let mut mac = HmacSha256::new_from_slice(&decoded_key).unwrap();
+        let mut mac = HmacSha256::new_from_slice(&decoded_key)
+            .map_err(|e| format!("invalid HMAC key: {}", e))?;
         
         mac.update(string_to_sign.as_bytes());
         
@@ -57,7 +60,7 @@ impl AzureAuth {
         
         let auth_header = format!("SharedKey {}:{}", account, signature);
 
-        (auth_header, date)
+        Ok((auth_header, date))
 
     }
 }

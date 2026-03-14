@@ -27,9 +27,9 @@ impl GCE {
 
         for (key, value) in request {
             match key.as_str() {
-                "projectid" => project_id = value.as_str().unwrap().to_string(),
+                "projectid" => project_id = value.as_str().unwrap_or_default().to_string(),
                 "Zone" => {
-                    zone = value.as_str().unwrap().to_string();
+                    zone = value.as_str().unwrap_or_default().to_string();
                     gce_instance.insert("Zone", value);
                 }
                 "selfLink" => {
@@ -48,11 +48,11 @@ impl GCE {
                     gce_instance.insert("MachineType", value);
                 }
                 "disk" => {
-                    let disk_param = value.as_array().unwrap();
+                    if let Some(disk_param) = value.as_array() {
                     let mut disks = vec![];
 
                     for disk_value in disk_param {
-                        let disk_map = disk_value.as_object().unwrap();
+                        if let Some(disk_map) = disk_value.as_object() {
                         let mut disk = HashMap::new();
                         let mut initialize_param = HashMap::new();
 
@@ -74,7 +74,7 @@ impl GCE {
                                     disk.insert("DeviceName", disk_val.clone());
                                 }
                                 "InitializeParams" => {
-                                    let init_params = disk_val.as_object().unwrap();
+                                    if let Some(init_params) = disk_val.as_object() {
                                     initialize_param
                                         .insert("SourceImage", init_params["SourceImage"].clone());
                                     initialize_param
@@ -82,20 +82,23 @@ impl GCE {
                                     initialize_param
                                         .insert("DiskSizeGb", init_params["DiskSizeGb"].clone());
                                     disk.insert("InitializeParams", json!(initialize_param));
+                                    }
                                 }
                                 _ => {}
                             }
                         }
                         disks.push(json!(disk));
+                        }
                     }
                     gce_instance.insert("Disks", json!(disks));
+                    }
                 }
                 "NetworkInterfaces" => {
-                    let network_interfaces_param = value.as_array().unwrap();
+                    if let Some(network_interfaces_param) = value.as_array() {
                     let mut network_interfaces = vec![];
 
                     for network_interface_value in network_interfaces_param {
-                        let network_interface_map = network_interface_value.as_object().unwrap();
+                        if let Some(network_interface_map) = network_interface_value.as_object() {
                         let mut network_interface = HashMap::new();
                         let mut access_configs = vec![];
 
@@ -111,30 +114,34 @@ impl GCE {
                                         .insert("Subnetwork", network_interface_val.clone());
                                 }
                                 "AccessConfigs" => {
-                                    let access_configs_param =
-                                        network_interface_val.as_array().unwrap();
+                                    if let Some(access_configs_param) =
+                                        network_interface_val.as_array() {
                                     for access_config_value in access_configs_param {
-                                        let access_config_map =
-                                            access_config_value.as_object().unwrap();
+                                        if let Some(access_config_map) =
+                                            access_config_value.as_object() {
                                         let mut access_config = HashMap::new();
                                         access_config
                                             .insert("Name", access_config_map["Name"].clone());
                                         access_config
                                             .insert("Type", access_config_map["Type"].clone());
                                         access_configs.push(json!(access_config));
+                                        }
                                     }
                                     network_interface
                                         .insert("AccessConfigs", json!(access_configs));
+                                    }
                                 }
                                 _ => {}
                             }
                         }
                         network_interfaces.push(json!(network_interface));
+                        }
                     }
                     gce_instance.insert("NetworkInterfaces", json!(network_interfaces));
+                    }
                 }
                 "scheduling" => {
-                    let scheduling_param = value.as_object().unwrap();
+                    if let Some(scheduling_param) = value.as_object() {
                     let mut scheduling = HashMap::new();
 
                     for (scheduling_key, scheduling_val) in scheduling_param {
@@ -152,12 +159,13 @@ impl GCE {
                         }
                     }
                     gce_instance.insert("Scheduling", json!(scheduling));
+                    }
                 }
                 _ => {}
             }
         }
 
-        let gce_instance_json = serde_json::to_string(&gce_instance).unwrap();
+        let gce_instance_json = serde_json::to_string(&gce_instance)?;
         let url = format!(
             "{}/projects/{}/zones/{}/instances",
             self.base_url, project_id, zone
@@ -187,9 +195,12 @@ impl GCE {
         &self,
         request: HashMap<String, String>,
     ) -> Result<HashMap<String, String>, Box<dyn std::error::Error>> {
-        let project_id = request.get("projectid").unwrap();
-        let zone = request.get("Zone").unwrap();
-        let instance = request.get("instance").unwrap();
+        let project_id = request.get("projectid")
+            .ok_or("missing required field 'projectid'")?;
+        let zone = request.get("Zone")
+            .ok_or("missing required field 'Zone'")?;
+        let instance = request.get("instance")
+            .ok_or("missing required field 'instance'")?;
         let url = format!(
             "{}/projects/{}/zones/{}/instances/{}/start",
             self.base_url, project_id, zone, instance
@@ -218,9 +229,12 @@ impl GCE {
         &self,
         request: HashMap<String, String>,
     ) -> Result<HashMap<String, String>, Box<dyn std::error::Error>> {
-        let project_id = request.get("projectid").unwrap();
-        let zone = request.get("Zone").unwrap();
-        let instance = request.get("instance").unwrap();
+        let project_id = request.get("projectid")
+            .ok_or("missing required field 'projectid'")?;
+        let zone = request.get("Zone")
+            .ok_or("missing required field 'Zone'")?;
+        let instance = request.get("instance")
+            .ok_or("missing required field 'instance'")?;
         let url = format!(
             "{}/projects/{}/zones/{}/instances/{}/stop",
             self.base_url, project_id, zone, instance
@@ -249,9 +263,12 @@ impl GCE {
         &self,
         request: HashMap<String, String>,
     ) -> Result<HashMap<String, String>, Box<dyn std::error::Error>> {
-        let project_id = request.get("projectid").unwrap();
-        let zone = request.get("Zone").unwrap();
-        let instance = request.get("instance").unwrap();
+        let project_id = request.get("projectid")
+            .ok_or("missing required field 'projectid'")?;
+        let zone = request.get("Zone")
+            .ok_or("missing required field 'Zone'")?;
+        let instance = request.get("instance")
+            .ok_or("missing required field 'instance'")?;
         let url = format!(
             "{}/projects/{}/zones/{}/instances/{}",
             self.base_url, project_id, zone, instance
@@ -280,9 +297,12 @@ impl GCE {
         &self,
         request: HashMap<String, String>,
     ) -> Result<HashMap<String, String>, Box<dyn std::error::Error>> {
-        let project_id = request.get("projectid").unwrap();
-        let zone = request.get("Zone").unwrap();
-        let instance = request.get("instance").unwrap();
+        let project_id = request.get("projectid")
+            .ok_or("missing required field 'projectid'")?;
+        let zone = request.get("Zone")
+            .ok_or("missing required field 'Zone'")?;
+        let instance = request.get("instance")
+            .ok_or("missing required field 'instance'")?;
         let url = format!(
             "{}/projects/{}/zones/{}/instances/{}/reset",
             self.base_url, project_id, zone, instance
@@ -311,8 +331,10 @@ impl GCE {
         &self,
         request: HashMap<String, String>,
     ) -> Result<HashMap<String, String>, Box<dyn std::error::Error>> {
-        let project_id = request.get("projectid").unwrap();
-        let zone = request.get("Zone").unwrap();
+        let project_id = request.get("projectid")
+            .ok_or("missing required field 'projectid'")?;
+        let zone = request.get("Zone")
+            .ok_or("missing required field 'Zone'")?;
         let url = format!(
             "{}/projects/{}/zones/{}/instances/",
             self.base_url, project_id, zone
